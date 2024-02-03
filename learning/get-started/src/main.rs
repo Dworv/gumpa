@@ -76,12 +76,19 @@ async fn execute_gpu_inner(
     //   A storage buffer (can be bound within a bind group and thus available to a shader).
     //   The destination of a copy.
     //   The source of a copy.
-    let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    let input_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("Storage Buffer"),
         contents: bytemuck::cast_slice(numbers),
         usage: wgpu::BufferUsages::STORAGE
             | wgpu::BufferUsages::COPY_DST
-            | wgpu::BufferUsages::COPY_SRC,
+    });
+
+    let res_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size,
+        usage: wgpu::BufferUsages::COPY_SRC
+            | wgpu::BufferUsages::STORAGE,
+        mapped_at_creation: false
     });
 
     // A bind group defines how buffers are accessed by shaders.
@@ -103,10 +110,16 @@ async fn execute_gpu_inner(
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: None,
         layout: &bind_group_layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: storage_buffer.as_entire_binding(),
-        }],
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: input_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: res_buffer.as_entire_binding()
+            }
+        ],
     });
 
     // A command encoder executes one or many pipelines.
@@ -125,7 +138,7 @@ async fn execute_gpu_inner(
     }
     // Sets adds copy operation to command encoder.
     // Will copy data from storage buffer on GPU to staging buffer on CPU.
-    encoder.copy_buffer_to_buffer(&storage_buffer, 0, &staging_buffer, 0, size);
+    encoder.copy_buffer_to_buffer(&res_buffer, 0, &staging_buffer, 0, size);
 
     // Submits command encoder for processing
     queue.submit(Some(encoder.finish()));
