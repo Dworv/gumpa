@@ -31,8 +31,8 @@ async fn main() {
     print_time_gap("getting device", &mut gap);
 
     // prep
-    let input_1 = [1, 2, 3, 4, 5];
-    let input_2 = [3, 3, 3, 3, 10];
+    let input_1 = [12;65535];
+    let input_2 = [13;65535];
     reset_time_gap(&mut gap);
 
     let shader_module = device.create_shader_module(ShaderModuleDescriptor {
@@ -144,7 +144,8 @@ async fn main() {
     drop(data);
     staging_buffer.unmap();
 
-    println!("result: {:?}", result);
+    // println!("result: {:?}", result);
+    println!("len: {}, first: {}", result.len(), result[0])
 }
 
 fn print_time_gap(activity: &str, gap: &mut Instant) {
