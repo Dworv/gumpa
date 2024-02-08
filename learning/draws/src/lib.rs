@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bytemuck::{NoUninit, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 use winit::{
     event::*,
@@ -27,7 +27,6 @@ pub async fn run() {
                             state.resize(*physical_size);
                         }
                         WindowEvent::RedrawRequested => {
-                            dbg!(":D");
                             state.update();
                             match state.render() {
                                 Ok(_) => {}
