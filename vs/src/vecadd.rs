@@ -24,7 +24,6 @@ pub fn vecadd() -> Test {
             cpu_c.push(cpu_a[i] + cpu_b[i]);
         }
         assert_eq!(cpu_c.len(), 500);
-        println!("{:?}\n{:?}\n{:?}", &cpu_a[0..10], &cpu_b[0..10], &cpu_c[0..10]);
     };
 
     let gpu = move |x: &mut (Device, Queue)| {
@@ -109,7 +108,7 @@ pub fn vecadd() -> Test {
         drop(data);
         stag_buf.unmap();
 
-        println!("{:?}\n{:?}\n{:?}", &gpu_a[0..10], &gpu_b[0..10], &result[0..10]);
+        assert_eq!(result.len(), gpu_a.len());
     };
 
     Test {
