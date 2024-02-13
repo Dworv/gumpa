@@ -1,11 +1,9 @@
-use std::time::{Duration, Instant};
-
 use wgpu::{Device, DeviceDescriptor, Features, Instance, Limits, Queue, RequestAdapterOptions};
 
 pub struct Test {
     pub name: String,
     pub cpu: Box<dyn Fn()>,
-    pub gpu: Box<dyn Fn() -> Box<dyn Fn()>>,
+    pub gpu: Box<dyn FnOnce(&mut (Device, Queue))>,
 }
 
 const ADAPTER_OPTIONS: RequestAdapterOptions = RequestAdapterOptions {
