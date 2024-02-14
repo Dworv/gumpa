@@ -1,7 +1,7 @@
-use std::{iter, mem::size_of};
+use std::mem::size_of;
 
 use wgpu::{
-    include_wgsl, util::{BufferInitDescriptor, DeviceExt}, BindGroup, BindGroupDescriptor, BindGroupEntry, Buffer, BufferAddress, BufferAsyncError, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Features, Instance, Limits, Queue, RequestAdapterOptions, ShaderModuleDescriptor
+    include_wgsl, BindGroupDescriptor, BindGroupEntry, BufferAsyncError, BufferDescriptor, BufferUsages, CommandEncoderDescriptor, ComputePassDescriptor, ComputePipeline, ComputePipelineDescriptor, Device, DeviceDescriptor, Features, Instance, Limits, Queue, RequestAdapterOptions, ShaderModuleDescriptor
 };
 
 const N: u64 = 1000;
