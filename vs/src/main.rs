@@ -2,6 +2,7 @@ use std::time::Instant;
 
 mod utils;
 mod vecadd;
+mod riemann;
 
 #[pollster::main]
 async fn main() {
@@ -11,7 +12,7 @@ async fn main() {
     let mut gpu_tools = utils::init_gpu().await;
 
     println!("Running tests...");
-    let tests: Vec<utils::Test> = vec![vecadd::vecadd()];
+    let tests: Vec<utils::Test> = vec![vecadd::vecadd(), riemann::riemann()];
 
     for test in tests {
         let cpu_time = {
