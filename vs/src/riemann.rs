@@ -12,8 +12,8 @@ use crate::utils::Test;
 
 pub fn riemann() -> Test {
     let mut rng = thread_rng();
-    // let start = rng.gen_range(0..500) as f32;
-    let start = 0.;
+    let start = rng.gen_range(0..500) as f32;
+    let answer = ((start + 10.).powi(3) - start.powi(3))/3.;
 
     let cpu = move || {
         let mut sum = 0.;
@@ -22,7 +22,7 @@ pub fn riemann() -> Test {
             sum += num.powf(2.);
         }
         let res = sum * 10. / 1000000.;
-        println!("cpu got {}", res);
+        assert!(res > answer - 1. || res < answer + 1.);
     };
 
     let gpu = move |x: &mut (Device, Queue)| {
@@ -98,7 +98,7 @@ pub fn riemann() -> Test {
         drop(data);
         stag_buf.unmap();
 
-        println!("gpu got {}", res);
+        assert!(res > answer - 1. || res < answer + 1.);
     };
 
     Test {
