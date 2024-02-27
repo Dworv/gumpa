@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use winit::{dpi::PhysicalSize, event::{Event, WindowEvent}, event_loop::EventLoop, window::Window};
 
-
-
 pub struct App;
 
 impl App {
@@ -34,7 +32,7 @@ impl App {
                             Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                             Err(e) => eprintln!("{:?}", e),
                         }
-                        runtime.window.request_redraw();
+                        // runtime.window.request_redraw();
                     }
                     _ => {}
                 }
@@ -123,6 +121,7 @@ impl AppRuntime {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
+        self.window.request_redraw();
     }
 
     fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
