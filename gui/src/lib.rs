@@ -140,7 +140,7 @@ impl AppRuntime {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -150,6 +150,7 @@ impl AppRuntime {
             });
         }
         self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
         Ok(())
     }
 }
