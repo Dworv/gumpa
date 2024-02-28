@@ -17,11 +17,10 @@ pub struct AppRuntime {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
-    cpipeline: wgpu::ComputePipeline,
-    rpipeline: wgpu::RenderPipeline,
+    pipeline: wgpu::RenderPipeline,
     element_buffer: wgpu::Buffer,
-    vertex_buffer: wgpu::Buffer,
-    bind_group: wgpu::BindGroup
+    bind_group: wgpu::BindGroup,
+    n_elements: usize
 }
 
 impl AppRuntime {
@@ -48,7 +47,7 @@ impl AppRuntime {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: wgpu::Features::empty(),
+                    required_features: wgpu::Features::VERTEX_WRITABLE_STORAGE,
                     required_limits: wgpu::Limits::default(),
                 },
                 None,
@@ -82,30 +81,30 @@ impl AppRuntime {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
         });
 
-        let vertex_buffer = device.create_buffer(
-            &wgpu::BufferDescriptor {
-                label: Some("Vertex Buffer"),
-                size: elements.len() as u64 * 6 * std::mem::size_of::<f32>() as u64 * 4,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
-                mapped_at_creation: false,
-            }
-        );
-
         let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
-            source: wgpu::ShaderSource::Wgsl(include_str!("gui.wgsl").into()),
+            source: wgpu::ShaderSource::Wgsl(include_str!("render.wgsl").into()),
         });
 
-        let cpipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
-            layout: None,
-            module: &shader_module,
-            entry_point: "cs_main",
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: Some(16.try_into().unwrap()),
+                    },
+                    count: None,
+                },
+            ]
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &cpipeline.get_bind_group_layout(0),
+            layout: &bgl,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -115,40 +114,22 @@ impl AppRuntime {
                         size: None,
                     }),
                 },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &vertex_buffer,
-                        offset: 0,
-                        size: None,
-                    }),
-                }
             ]
         });
 
         let rpl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&bgl],
             push_constant_ranges: &[],
         });
 
-        let rpipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&rpl),
             vertex: wgpu::VertexState {
                 module: &shader_module,
                 entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: (std::mem::size_of::<f32>() * 4) as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x4,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                    ],
-                }]
+                buffers: &[]
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader_module,
@@ -184,11 +165,10 @@ impl AppRuntime {
             queue,
             config,
             size,
-            cpipeline,
-            rpipeline,
+            pipeline,
             element_buffer,
-            vertex_buffer,
-            bind_group
+            bind_group,
+            n_elements: elements.len()
         }
     }
 
@@ -242,8 +222,9 @@ impl AppRuntime {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+        
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -257,6 +238,10 @@ impl AppRuntime {
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
+
+            rpass.set_pipeline(&self.pipeline);
+            rpass.set_bind_group(0, &self.bind_group, &[]);
+            rpass.draw(0..(self.n_elements as u32 * 6), 0..1)
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
