@@ -3,7 +3,7 @@ use bytemuck::{Pod, Zeroable};
 use crate::Vec2;
 
 #[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Element {
     pos: Vec2,
     size: Vec2,

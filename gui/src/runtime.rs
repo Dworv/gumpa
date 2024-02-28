@@ -18,7 +18,6 @@ pub struct AppRuntime {
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
     pipeline: wgpu::RenderPipeline,
-    element_buffer: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
     n_elements: usize
 }
@@ -47,7 +46,7 @@ impl AppRuntime {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    required_features: wgpu::Features::VERTEX_WRITABLE_STORAGE,
+                    required_features: wgpu::Features::empty(),
                     required_limits: wgpu::Limits::default(),
                 },
                 None,
@@ -166,7 +165,6 @@ impl AppRuntime {
             config,
             size,
             pipeline,
-            element_buffer,
             bind_group,
             n_elements: elements.len()
         }
@@ -190,7 +188,7 @@ impl AppRuntime {
                             Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                             Err(e) => eprintln!("{:?}", e),
                         }
-                        // runtime.window.request_redraw();
+                        self.window.request_redraw();
                     }
                     _ => {}
                 }
@@ -241,7 +239,8 @@ impl AppRuntime {
 
             rpass.set_pipeline(&self.pipeline);
             rpass.set_bind_group(0, &self.bind_group, &[]);
-            rpass.draw(0..(self.n_elements as u32 * 6), 0..1)
+            // rpass.draw(0..(self.n_elements as u32 * 6), 0..1)
+            rpass.draw(0..3, 0..1)
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
