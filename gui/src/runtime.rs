@@ -1,6 +1,14 @@
 use std::sync::Arc;
 
-use winit::{dpi::PhysicalSize, event::{Event, WindowEvent}, event_loop::EventLoop, window::Window};
+use wgpu::util::DeviceExt;
+use winit::{
+    dpi::PhysicalSize,
+    event::{Event, WindowEvent},
+    event_loop::EventLoop,
+    window::Window,
+};
+
+use crate::Element;
 
 pub struct AppRuntime {
     window: Arc<Window>,
@@ -9,10 +17,15 @@ pub struct AppRuntime {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
+    cpipeline: wgpu::ComputePipeline,
+    rpipeline: wgpu::RenderPipeline,
+    element_buffer: wgpu::Buffer,
+    vertex_buffer: wgpu::Buffer,
+    bind_group: wgpu::BindGroup
 }
 
 impl AppRuntime {
-    pub async fn init(window: Arc<Window>) -> Self {
+    pub async fn init(window: Arc<Window>, elements: &[Element]) -> Self {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -63,19 +76,124 @@ impl AppRuntime {
         };
         surface.configure(&device, &config);
 
+        let element_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Element Buffer"),
+            contents: bytemuck::cast_slice(&elements),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+        });
+
+        let vertex_buffer = device.create_buffer(
+            &wgpu::BufferDescriptor {
+                label: Some("Vertex Buffer"),
+                size: elements.len() as u64 * 6 * std::mem::size_of::<f32>() as u64 * 4,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
+                mapped_at_creation: false,
+            }
+        );
+
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None,
+            source: wgpu::ShaderSource::Wgsl(include_str!("gui.wgsl").into()),
+        });
+
+        let cpipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None,
+            layout: None,
+            module: &shader_module,
+            entry_point: "cs_main",
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &cpipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &element_buffer,
+                        offset: 0,
+                        size: None,
+                    }),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &vertex_buffer,
+                        offset: 0,
+                        size: None,
+                    }),
+                }
+            ]
+        });
+
+        let rpl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        let rpipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&rpl),
+            vertex: wgpu::VertexState {
+                module: &shader_module,
+                entry_point: "vs_main",
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: (std::mem::size_of::<f32>() * 4) as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                    ],
+                }]
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader_module,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Cw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
         AppRuntime {
             window,
             surface,
             device,
             queue,
             config,
-            size
+            size,
+            cpipeline,
+            rpipeline,
+            element_buffer,
+            vertex_buffer,
+            bind_group
         }
     }
 
     pub fn run(&mut self, el: EventLoop<()>) {
-        el
-        .run(move |event, elwt| match event {
+        el.run(move |event, elwt| match event {
             Event::WindowEvent {
                 ref event,
                 window_id,
@@ -115,11 +233,15 @@ impl AppRuntime {
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
 
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
         {
             let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -127,13 +249,13 @@ impl AppRuntime {
                     view: &view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
                 depth_stencil_attachment: None,
                 occlusion_query_set: None,
-                timestamp_writes: None
+                timestamp_writes: None,
             });
         }
         self.queue.submit(std::iter::once(encoder.finish()));
