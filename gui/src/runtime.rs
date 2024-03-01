@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rand::Rng;
 use wgpu::util::DeviceExt;
 use winit::{
     dpi::PhysicalSize,
@@ -139,21 +140,9 @@ impl AppRuntime {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
+            primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            multisample: wgpu::MultisampleState::default(),
             multiview: None,
         });
 
@@ -188,7 +177,6 @@ impl AppRuntime {
                             Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                             Err(e) => eprintln!("{:?}", e),
                         }
-                        self.window.request_redraw();
                     }
                     _ => {}
                 }
@@ -239,8 +227,8 @@ impl AppRuntime {
 
             rpass.set_pipeline(&self.pipeline);
             rpass.set_bind_group(0, &self.bind_group, &[]);
-            // rpass.draw(0..(self.n_elements as u32 * 6), 0..1)
-            rpass.draw(0..3, 0..1)
+            rpass.draw(0..(self.n_elements as u32 * 6), 0..1);
+            // rpass.draw(0..3, 0..1)
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
