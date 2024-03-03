@@ -9,7 +9,7 @@ var<storage, read> element_buffer: array<Element>;
 
 @group(0)
 @binding(1)
-var<uniform> res: vec2<f32>;
+var<storage, read> res_buffer: vec2<f32>;
 
 fn pos_to_normalized(pos: vec2<f32>, res: vec2<f32>) -> vec4<f32> {
     let x = (pos.x * 2 / res.x) - 1;
@@ -28,10 +28,8 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) ve
     let element_index = in_vertex_index / 6;
     let v_index = in_vertex_index % 6;
 
-    let pos = pos_to_normalized(element_buffer[element_index].position, res);
-    let size = size_to_normalized(element_buffer[element_index].size, res);
-    // let pos = vec4<f32>(element_buffer[element_index].position, 0.0, 1.0);
-    // let size = element_buffer[element_index].size;
+    let pos = pos_to_normalized(element_buffer[element_index].position, res_buffer);
+    let size = size_to_normalized(element_buffer[element_index].size, res_buffer);
 
     if v_index == 0 || v_index == 3 {
         return pos;

@@ -8,7 +8,7 @@ use winit::{
     window::Window,
 };
 
-use crate::Element;
+use crate::{Element, Vec2};
 
 pub struct AppRuntime {
     window: Arc<Window>,
@@ -81,12 +81,10 @@ impl AppRuntime {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
         });
 
-        dbg!(size.width, size.height);
-
         let res_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Resolution Buffer"),
-            contents: bytemuck::cast_slice(&[size.width, size.height]),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            contents: bytemuck::cast_slice(&[Vec2::new(size.width as f32, size.height as f32)]),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
 
         let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -109,9 +107,9 @@ impl AppRuntime {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStages::all(),
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
+                        ty: wgpu::BufferBindingType::Storage { read_only: true },
                         has_dynamic_offset: false,
                         min_binding_size: None,
                     },
@@ -196,6 +194,7 @@ impl AppRuntime {
                             Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                             Err(e) => eprintln!("{:?}", e),
                         }
+                        self.window.request_redraw();
                     }
                     _ => {}
                 }
@@ -213,18 +212,18 @@ impl AppRuntime {
             self.surface.configure(&self.device, &self.config);
         }
                         
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Resize Encoder"),
-        });
+        // let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        //     label: Some("Resize Encoder"),
+        // });
 
-        let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Resolution Buffer"),
-            contents: bytemuck::cast_slice(&[new_size.width, new_size.height]),
-            usage: wgpu::BufferUsages::COPY_SRC,
-        });
-        encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
+        // let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Resolution Buffer"),
+        //     contents: bytemuck::cast_slice(&[new_size.width, new_size.height]),
+        //     usage: wgpu::BufferUsages::COPY_SRC,
+        // });
+        // encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        // self.queue.submit(std::iter::once(encoder.finish()));
         self.window.request_redraw();
     }
 
