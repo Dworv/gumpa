@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use rand::Rng;
 use wgpu::util::DeviceExt;
 use winit::{
     dpi::PhysicalSize,
@@ -20,7 +19,8 @@ pub struct AppRuntime {
     size: winit::dpi::PhysicalSize<u32>,
     pipeline: wgpu::RenderPipeline,
     bind_group: wgpu::BindGroup,
-    n_elements: usize
+    n_elements: usize,
+    res_buffer: wgpu::Buffer,
 }
 
 impl AppRuntime {
@@ -81,6 +81,14 @@ impl AppRuntime {
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
         });
 
+        dbg!(size.width, size.height);
+
+        let res_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Resolution Buffer"),
+            contents: bytemuck::cast_slice(&[size.width, size.height]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: None,
             source: wgpu::ShaderSource::Wgsl(include_str!("render.wgsl").into()),
@@ -99,6 +107,16 @@ impl AppRuntime {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::all(),
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
             ]
         });
 
@@ -108,12 +126,12 @@ impl AppRuntime {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &element_buffer,
-                        offset: 0,
-                        size: None,
-                    }),
+                    resource: element_buffer.as_entire_binding()
                 },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: res_buffer.as_entire_binding()
+                }
             ]
         });
 
@@ -155,7 +173,8 @@ impl AppRuntime {
             size,
             pipeline,
             bind_group,
-            n_elements: elements.len()
+            n_elements: elements.len(),
+            res_buffer
         }
     }
 
@@ -193,6 +212,19 @@ impl AppRuntime {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
+                        
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Resize Encoder"),
+        });
+
+        let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Resolution Buffer"),
+            contents: bytemuck::cast_slice(&[new_size.width, new_size.height]),
+            usage: wgpu::BufferUsages::COPY_SRC,
+        });
+        encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
+
+        self.queue.submit(std::iter::once(encoder.finish()));
         self.window.request_redraw();
     }
 
@@ -228,7 +260,6 @@ impl AppRuntime {
             rpass.set_pipeline(&self.pipeline);
             rpass.set_bind_group(0, &self.bind_group, &[]);
             rpass.draw(0..(self.n_elements as u32 * 6), 0..1);
-            // rpass.draw(0..3, 0..1)
         }
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
