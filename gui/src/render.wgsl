@@ -18,8 +18,8 @@ fn pos_to_normalized(pos: vec2<f32>, res: vec2<f32>) -> vec4<f32> {
 }
 
 fn size_to_normalized(size: vec2<f32>, res: vec2<f32>) -> vec2<f32> {
-    let x = floor(size.x * 2 / res.x);
-    let y = floor(size.y * 2 / res.y);
+    let x = size.x * 2 / res.x;
+    let y = size.y * 2 / res.y;
     return vec2<f32>(x, y);
 }
 

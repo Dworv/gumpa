@@ -212,18 +212,18 @@ impl AppRuntime {
             self.surface.configure(&self.device, &self.config);
         }
                         
-        // let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        //     label: Some("Resize Encoder"),
-        // });
+        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Resize Encoder"),
+        });
 
-        // let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        //     label: Some("Resolution Buffer"),
-        //     contents: bytemuck::cast_slice(&[new_size.width, new_size.height]),
-        //     usage: wgpu::BufferUsages::COPY_SRC,
-        // });
-        // encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
+        let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Resolution Buffer"),
+            contents: bytemuck::cast_slice(&[Vec2::new(new_size.width as f32, new_size.height as f32)]),
+            usage: wgpu::BufferUsages::COPY_SRC,
+        });
+        encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
 
-        // self.queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(std::iter::once(encoder.finish()));
         self.window.request_redraw();
     }
 
