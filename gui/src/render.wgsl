@@ -1,6 +1,12 @@
 struct Element {
     @location(0) position: vec2<f32>,
-    @location(1) size: vec2<f32>
+    @location(1) size: vec2<f32>,
+    @location(2) color: vec4<f32>,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) color: vec4<f32>,
 }
 
 @group(0)
@@ -24,32 +30,34 @@ fn size_to_normalized(size: vec2<f32>, res: vec2<f32>) -> vec2<f32> {
 }
 
 @vertex
-fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4<f32> {
+fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
     let element_index = in_vertex_index / 6;
     let v_index = in_vertex_index % 6;
 
-    let pos = pos_to_normalized(element_buffer[element_index].position, res_buffer);
+    var pos = pos_to_normalized(element_buffer[element_index].position, res_buffer);
     let size = size_to_normalized(element_buffer[element_index].size, res_buffer);
 
-    if v_index == 0 || v_index == 3 {
-        return pos;
-    }
-    else if v_index == 1 {
+    if v_index == 1 {
         let vmod = vec4<f32>(0.0, -size.y, 0.0, 0.0);
-        return pos + vmod;
+        pos += vmod;
     }
     else if v_index == 2 || v_index == 5 {
         let vhmod = vec4<f32>(size.x, -size.y, 0.0, 0.0);
-        return pos + vhmod;
+        pos += vhmod;
     }
-    else {
+    else if v_index == 4 {
         let hmod = vec4<f32>(size.x, 0.0, 0.0, 0.0);
-        return pos + hmod;
+        pos += hmod;
     }
+
+    var out: VertexOutput;
+    out.clip_position = pos;
+    out.color = element_buffer[element_index].color;
+    return out;
 }
 
 
 @fragment
-fn fs_main(@builtin(position) in: vec4<f32>) -> @location(0) vec4<f32> {
-    return vec4<f32>(0.3, 0.2, 0.1, 1.0);
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    return in.color;
 }

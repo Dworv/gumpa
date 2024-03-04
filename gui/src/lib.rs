@@ -7,7 +7,7 @@ mod math;
 mod runtime;
 
 pub use element::Element;
-pub use math::Vec2;
+pub use math::{Vec2, Colour};
 use runtime::AppRuntime;
 
 pub struct App {
