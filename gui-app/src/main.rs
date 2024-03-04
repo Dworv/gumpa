@@ -2,7 +2,15 @@ use gui::{Element, Vec2, Colour};
 
 #[pollster::main]
 async fn main() {
-    let mut app = gui::App::new(vec![Element::new(Vec2::new(0., 0.5), Vec2::new(400., 400.), Colour { r: 1., g: 0., b: 1., a:1. })]);
+    let mut app = gui::App::new((0..10).map(|i| {
+        (0..5).map(move |j| {
+            Element::new(
+                Vec2::new(20. + (i as f32 * 80.), 20. + (j as f32 * 80.)),
+                Vec2::new(60.0, 60.0),
+                Colour::new(1.0 - i as f32 * 0.1, 1.0 - j as f32 * 0.2, i as f32 * 0.05 + j as f32 * 0.1, 1.0)
+            )
+        })
+    }).flatten().collect());
 
     app.launch().await;
 }
