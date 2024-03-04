@@ -194,7 +194,6 @@ impl AppRuntime {
                             Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
                             Err(e) => eprintln!("{:?}", e),
                         }
-                        self.window.request_redraw();
                     }
                     _ => {}
                 }
