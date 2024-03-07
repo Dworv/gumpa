@@ -7,7 +7,7 @@ use crate::{math::Colour, Vec2};
 pub struct Element {
     pos: Vec2,
     size: Vec2,
-    colour: Colour
+    colour: Colour,
 }
 
 impl Element {

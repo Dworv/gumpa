@@ -59,9 +59,7 @@ impl AppRuntime {
         let surface_format = surface_caps
             .formats
             .iter()
-            .copied()
-            .filter(|f| f.is_srgb())
-            .next()
+            .copied().find(|f| f.is_srgb())
             .unwrap_or(surface_caps.formats[0]);
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -77,7 +75,7 @@ impl AppRuntime {
 
         let element_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Element Buffer"),
-            contents: bytemuck::cast_slice(&elements),
+            contents: bytemuck::cast_slice(elements),
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::STORAGE,
         });
 
@@ -115,7 +113,7 @@ impl AppRuntime {
                     },
                     count: None,
                 },
-            ]
+            ],
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -124,13 +122,13 @@ impl AppRuntime {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: element_buffer.as_entire_binding()
+                    resource: element_buffer.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: res_buffer.as_entire_binding()
-                }
-            ]
+                    resource: res_buffer.as_entire_binding(),
+                },
+            ],
         });
 
         let rpl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -145,7 +143,7 @@ impl AppRuntime {
             vertex: wgpu::VertexState {
                 module: &shader_module,
                 entry_point: "vs_main",
-                buffers: &[]
+                buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader_module,
@@ -172,7 +170,7 @@ impl AppRuntime {
             pipeline,
             bind_group,
             n_elements: elements.len(),
-            res_buffer
+            res_buffer,
         }
     }
 
@@ -181,23 +179,19 @@ impl AppRuntime {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == self.window.id() => {
-                match event {
-                    WindowEvent::CloseRequested => elwt.exit(),
-                    WindowEvent::Resized(physical_size) => {
-                        self.resize(*physical_size);
-                    }
-                    WindowEvent::RedrawRequested => {
-                        match self.render() {
-                            Ok(_) => {}
-                            Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
-                            Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
-                            Err(e) => eprintln!("{:?}", e),
-                        }
-                    }
-                    _ => {}
+            } if window_id == self.window.id() => match event {
+                WindowEvent::CloseRequested => elwt.exit(),
+                WindowEvent::Resized(physical_size) => {
+                    self.resize(*physical_size);
                 }
-            }
+                WindowEvent::RedrawRequested => match self.render() {
+                    Ok(_) => {}
+                    Err(wgpu::SurfaceError::Lost) => self.resize(self.size),
+                    Err(wgpu::SurfaceError::OutOfMemory) => elwt.exit(),
+                    Err(e) => eprintln!("{:?}", e),
+                },
+                _ => {}
+            },
             _ => {}
         })
         .unwrap();
@@ -210,16 +204,23 @@ impl AppRuntime {
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
         }
-                        
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Resize Encoder"),
-        });
 
-        let new_res_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Resolution Buffer"),
-            contents: bytemuck::cast_slice(&[Vec2::new(new_size.width as f32, new_size.height as f32)]),
-            usage: wgpu::BufferUsages::COPY_SRC,
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Resize Encoder"),
+            });
+
+        let new_res_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Resolution Buffer"),
+                contents: bytemuck::cast_slice(&[Vec2::new(
+                    new_size.width as f32,
+                    new_size.height as f32,
+                )]),
+                usage: wgpu::BufferUsages::COPY_SRC,
+            });
         encoder.copy_buffer_to_buffer(&new_res_buffer, 0, &self.res_buffer, 0, 8);
 
         self.queue.submit(std::iter::once(encoder.finish()));
@@ -238,7 +239,7 @@ impl AppRuntime {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
-        
+
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
