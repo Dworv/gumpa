@@ -7,6 +7,7 @@ struct Element {
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
+    @location(1) nrv: f32 // Normalized relative vertex 
 }
 
 @group(0)
@@ -50,13 +51,22 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> VertexOutput {
         pos += hmod;
     }
 
+    var nrv = 0.0;
+    if v_index == 2 {
+        nrv = 1.0;
+    }
+
     var out: VertexOutput;
     out.clip_position = pos;
     out.color = element_buffer[element_index].color;
+    out.nrv = nrv;
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    if in.nrv > 0.7 {
+        return vec4<f32>(1.0, 0.0, 0.0, 1.0);
+    }
     return in.color;
 }
