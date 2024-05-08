@@ -1,8 +1,3 @@
-"""
-Example compute shader that does ... nothing but copy a value from one
-buffer into another.
-"""
-
 import wgpu
 from wgpu.utils.compute import compute_with_buffers
 
